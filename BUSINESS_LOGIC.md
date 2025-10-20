@@ -1,75 +1,67 @@
-# Business Logic
-
-This document outlines the business logic of the Grit Selector application.
-
-## Core Functionality
-
-The application is a web-based tool that allows users to scrape data from any website using a simple and powerful query language. The core functionality is exposed through a single-page user interface and a backend API.
-
-### User Interface
-
-The user interface consists of a form with two main fields:
-
-*   **Target URL:** The URL of the website to be scraped.
-*   **Queries (JSON):** A JSON object that defines the data to be extracted from the page.
-
-When the user submits the form, the application sends a request to the backend API and displays the scraped data on the page.
-
-### Backend API
-
-The backend is a single API endpoint, `/api/scrape`, that accepts `POST` requests with a JSON body containing the `url` and `queries`.
-
-The API uses `puppeteer` to launch a headless browser and navigate to the specified URL. It then injects a custom "DOM Bridge" into the page, which allows the server to execute queries against the page's DOM.
-
-The queries are executed in a batch, and the results are returned to the client as a JSON object.
-
-### Data Logging
-
-All scraping attempts, both successful and failed, are logged to a `scrape_logs` table in a Supabase database. This provides a historical record of all scraping operations, which can be used for monitoring, debugging, and auditing purposes.
-
-## Query Language
-
-The query language is based on a simple JSON object format. Each key in the object represents a piece of data to be extracted, and the value is an object that specifies the selector and the type of data to be extracted.
-
-The following query types are supported:
-
-*   `text`: Extracts the text content of the selected element.
-*   `html`: Extracts the HTML content of the selected element.
-*   `attr`: Extracts the value of a specified attribute from the selected element.
-*   `value`: Extracts the value of an input field.
-*   `exists`: Checks for the existence of the selected element.
-
-### Example Queries
-
-```json
-{
-  "title": { "selector": "h1" },
-  "price": { "selector": ".price", "type": "text" },
-  "description": { "selector": ".desc", "type": "html" },
-  "productId": { "selector": "[data-product-id]", "type": "attr", "attribute": "data-product-id" },
-  "inputValue": { "selector": "input#email", "type": "value" },
-  "hasStock": { "selector": ".in-stock", "type": "exists" }
-}
-```
-
-## Technologies Used
-
-*   **Frontend:** Next.js, React
-*   **Backend:** Next.js API Routes, Puppeteer
-*   **Database:** Supabase (PostgreSQL)
-
-
-Project Goal
-The primary objective of this application is to serve as a specialized tool for identifying and cataloging CSS selectors that correspond to product information on e-commerce websites. The collected selectors are stored in a Supabase database, creating a centralized repository that can be consumed by other web scraping services.
-
-Core User Stories
-Selector Discovery and Storage: As a user, I want to provide a target URL for a product page and be able to identify and save the specific CSS selectors for various product attributes (such as name, price, description, and images) into a Supabase database.
-
-Historical Data Retrieval: As a user, I need to be able to view a comprehensive history of all the target URLs that have been previously processed.
-
-Search and Filtering: As a user, I want the ability to search and filter through the historical data to quickly locate a specific target URL and its associated CSS selectors.
+# Project Goal
 
 The purpose of this application is to streamline the web scraping workflow by decoupling the selector discovery process from the data extraction task. It provides a targeted interface for users to identify, test, and save CSS selectors for product-related information on various e-commerce sites. These selectors are then stored in a structured Supabase database, creating a reliable and easy-to-maintain "selector repository" that external web scraping projects can consume.
-Yes, that's correct. The current workflow requires you to manually find the CSS selectors using browser developer tools and then paste them into the application.
 
-This is a key area for improvement. To move closer to the project's goal of being a "selector discovery" tool, we could implement an interactive element selector. This would allow you to click on elements directly on the rendered page to generate their selectors automatically.
+# Core Features
+
+## Interactive Selector Discovery (`/interactive-selector`)
+
+This is the primary feature of the application. It allows users to interactively discover CSS selectors from a live website.
+
+*   **Load a Webpage:** Users can enter a URL, which is then loaded into an `iframe` within the application. A server-side proxy is used to bypass browser security restrictions (CORS, X-Frame-Options).
+*   **Element Highlighting:** As the user hovers over elements on the page, they are highlighted with an overlay.
+*   **Selector Generation:** When a user clicks on an element, a unique CSS selector for that element is automatically generated.
+*   **Naming and Saving:** The generated selectors are displayed on the side, where the user can assign a descriptive name (e.g., "productTitle", "price"). The collection of named selectors can then be saved to the Supabase database.
+
+## Selector History and Management (`/history`)
+
+This page provides a view of all the selectors that have been saved to the database.
+
+*   **View Saved Selectors:** It displays a list of all the saved selector sets, grouped by URL and ordered by creation date.
+*   **Expandable Details:** Users can click on a URL to expand it and view the list of named selectors associated with it.
+*   **Search:** A search bar allows users to filter the list of URLs.
+*   **Edit:** An "Edit" button allows users to modify the URL and the names and values of the selectors for a given entry.
+*   **Delete:** A "Delete" button allows users to remove a selector entry from the database.
+
+## Home Page (`/`)
+
+The home page serves as a landing page, providing links to the main features of the application:
+
+*   **Interactive Selector:** Links to the `/interactive-selector` page.
+*   **Manual Testing:** Links to the `/manual-testing` page.
+*   **History:** Links to the `/history` page.
+
+## Manual Selector Testing (`/manual-testing`)
+
+This page provides a simple interface for manually testing CSS selectors.
+
+*   **Manual Input:** Users can enter a URL and a JSON object of queries.
+*   **Scraping and Display:** The application makes a request to the backend, scrapes the page based on the provided selectors, and displays the results.
+*   **Logging:** All scrape attempts from this page are logged to a `scrape_logs` table in Supabase.
+
+# Backend and Architecture
+
+## API Routes
+
+*   `/api/scrape`: Handles the manual scraping requests from the main page.
+*   `/api/proxy`: A server-side proxy to fetch and return the content of external websites for the interactive selector.
+*   `/api/selectors`: A RESTful endpoint for managing the saved selectors.
+    *   `GET`: Fetches all saved selectors.
+    *   `POST`: Saves a new set of selectors.
+*   `/api/selectors/[id]`: A dynamic route for managing individual selector entries.
+    *   `GET`: Fetches a single selector entry by ID.
+    *   `PUT`: Updates a selector entry.
+    *   `DELETE`: Deletes a selector entry.
+
+## Database
+
+The application uses Supabase (PostgreSQL) for data storage.
+
+*   `selectors` table: Stores the named selectors saved from the interactive selector page. It has columns for `id`, `created_at`, `url`, and `selectors` (JSONB).
+*   `scrape_logs` table: Logs all scraping attempts from the manual testing page.
+
+# Technologies Used
+
+*   **Frontend:** Next.js, React, Tailwind CSS
+*   **Backend:** Next.js API Routes, Puppeteer
+*   **Database:** Supabase (PostgreSQL)
