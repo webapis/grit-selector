@@ -30,12 +30,54 @@ This feature now supports two distinct e-commerce page types:
   - Add to Cart Button (`.add-to-cart`)
   - Stock Status (`.stock-status`)
 
-### Selector Type Identification
-- Add a "Page Type" dropdown to specify whether the selectors are for:
-  - Product List Page
-  - Product Detail Page
-- Store this information in the database schema
-- Validate required selectors based on page type
+### Selector Type Identification and Implementation
+- **Page Type Selection**:
+  - Dropdown to specify "Product List Page" or "Product Detail Page"
+  - Visual validation of required selectors for each type
+  - Real-time feedback on missing required selectors
+  - Prevents saving until all required selectors are present
+
+### Smart Selector Generation
+- **Product List Pages**:
+  - Automatically identifies product card containers
+  - Generates relative selectors from the product card root
+  - Maintains selector hierarchy for list items
+  - Optimizes for readability and maintainability
+  - Example: `.product-card .product-title` instead of complex nested selectors
+
+- **Intelligent Link Handling**:
+  - Special handling for product links and clickable elements
+  - Prevents navigation while allowing selector generation
+  - Automatically detects parent link elements
+  - Visual indicators for interactive elements
+
+### Visual Feedback System
+- **Element Highlighting**:
+  - Color-coded overlays for different element types
+  - Red highlighting for links and interactive elements
+  - Blue highlighting for standard elements
+  - Tooltip showing element information and type
+
+- **Required Selector Tracking**:
+  - Visual checklist of required selectors
+  - Green indicators for completed selections
+  - Clear feedback on missing selectors
+  - Validation before saving
+
+### Technical Implementation
+- **Proxy System**:
+  - Advanced URL handling for external sites
+  - Converts relative URLs to absolute
+  - Handles cross-origin requests
+  - Blocks unnecessary API calls
+  - Maintains page functionality while preventing navigation
+
+- **Selector Script Features**:
+  - MutationObserver for dynamic content
+  - Click event prevention
+  - Intelligent parent element detection
+  - Simplified selector generation
+  - Automatic name suggestions
 
 ### Database Schema Update
 ```sql
