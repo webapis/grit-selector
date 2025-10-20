@@ -7,6 +7,7 @@ export default function History() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expanded, setExpanded] = useState({});
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -105,8 +106,6 @@ export default function History() {
 
   if (loading) return <p className="p-12">Loading...</p>;
   if (error) return <p className="p-12 text-red-600">{`Error: ${error}`}</p>;
-
-  const [searchTerm, setSearchTerm] = useState('');
 
   const filteredData = data.filter((item) =>
     item.url.toLowerCase().includes(searchTerm.toLowerCase())
