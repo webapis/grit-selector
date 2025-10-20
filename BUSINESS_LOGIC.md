@@ -70,3 +70,6 @@ Historical Data Retrieval: As a user, I need to be able to view a comprehensive 
 Search and Filtering: As a user, I want the ability to search and filter through the historical data to quickly locate a specific target URL and its associated CSS selectors.
 
 The purpose of this application is to streamline the web scraping workflow by decoupling the selector discovery process from the data extraction task. It provides a targeted interface for users to identify, test, and save CSS selectors for product-related information on various e-commerce sites. These selectors are then stored in a structured Supabase database, creating a reliable and easy-to-maintain "selector repository" that external web scraping projects can consume.
+Yes, that's correct. The current workflow requires you to manually find the CSS selectors using browser developer tools and then paste them into the application.
+
+This is a key area for improvement. To move closer to the project's goal of being a "selector discovery" tool, we could implement an interactive element selector. This would allow you to click on elements directly on the rendered page to generate their selectors automatically.
