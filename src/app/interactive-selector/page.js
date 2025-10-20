@@ -1,12 +1,35 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+
+const REQUIRED_SELECTORS = {
+  list: {
+    'product-card': 'Product Card Container',
+    'product-link': 'Product Link',
+    'product-thumb': 'Product Thumbnail',
+    'product-title': 'Product Title',
+    'list-price': 'List Price',
+    'sale-price': 'Sale Price'
+  },
+  detail: {
+    'product-title': 'Product Title',
+    'main-price': 'Main Price',
+    'description': 'Product Description',
+    'sku': 'Product SKU',
+    'gallery': 'Image Gallery',
+    'variants': 'Variant Selectors',
+    'add-to-cart': 'Add to Cart Button',
+    'stock-status': 'Stock Status'
+  }
+};
 
 export default function InteractiveSelector() {
   const [url, setUrl] = useState('https://www.google.com');
   const [iframeSrc, setIframeSrc] = useState('');
   const iframeRef = useRef(null);
   const [selectors, setSelectors] = useState([]);
+  const [pageType, setPageType] = useState('list'); // 'list' or 'detail'
+  const [missingSelectors, setMissingSelectors] = useState([]);
 
   const handleLoadUrl = () => {
     setIframeSrc(`/api/proxy?url=${encodeURIComponent(url)}`);
@@ -35,11 +58,26 @@ export default function InteractiveSelector() {
     };
   }, []);
 
+  // Add effect to validate selectors whenever they or page type changes
+  useEffect(() => {
+    validateRequiredSelectors(selectors);
+  }, [selectors, pageType]);
+
   const handleSelectorNameChange = (index, newName) => {
     const newSelectors = [...selectors];
     newSelectors[index].name = newName;
     setSelectors(newSelectors);
+    validateRequiredSelectors(newSelectors);
   };
+
+  const validateRequiredSelectors = useCallback((currentSelectors) => {
+    const requiredNames = Object.keys(REQUIRED_SELECTORS[pageType]);
+    const missingNames = requiredNames.filter(name => 
+      !currentSelectors.some(s => s.name === name)
+    );
+    setMissingSelectors(missingNames);
+    return missingNames.length === 0;
+  }, [pageType]);
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
@@ -48,13 +86,24 @@ export default function InteractiveSelector() {
     setIsSaving(true);
     setSaveError(null);
 
+    if (!validateRequiredSelectors(selectors)) {
+      setSaveError(`Missing required selectors for ${pageType} page: ${missingSelectors.join(', ')}`);
+      setIsSaving(false);
+      return;
+    }
+
     try {
       const response = await fetch('/api/selectors', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ url, selectors }),
+        body: JSON.stringify({ 
+          url, 
+          selectors, 
+          pageType,
+          required_selectors_complete: true 
+        }),
       });
 
       if (!response.ok) {
@@ -94,6 +143,28 @@ export default function InteractiveSelector() {
           >
             Load Page
           </button>
+          <select
+            value={pageType}
+            onChange={(e) => setPageType(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+          >
+            <option value="list">Product List Page</option>
+            <option value="detail">Product Detail Page</option>
+          </select>
+        </div>
+
+        <div className="mt-4 mb-6">
+          <h3 className="text-sm font-medium text-gray-700 mb-2">Required Selectors</h3>
+          <div className="grid grid-cols-2 gap-4">
+            {Object.entries(REQUIRED_SELECTORS[pageType]).map(([key, label]) => (
+              <div key={key} className="flex items-center">
+                <div className={`w-2 h-2 rounded-full mr-2 ${
+                  selectors.some(s => s.name === key) ? 'bg-green-500' : 'bg-red-500'
+                }`} />
+                <span className="text-sm text-gray-600">{label}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
