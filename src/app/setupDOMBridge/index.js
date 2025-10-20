@@ -1,4 +1,4 @@
-async function setupDOMBridge(page, options = {}) {
+export async function setupDOMBridge(page, options = {}) {
   const {
     refreshInterval = 30 * 60 * 1000,
     onRefresh = null,
