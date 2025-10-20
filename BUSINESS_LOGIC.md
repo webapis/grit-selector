@@ -6,6 +6,46 @@ The purpose of this application is to streamline the web scraping workflow by de
 
 ## Interactive Selector Discovery (`/interactive-selector`)
 
+This feature now supports two distinct e-commerce page types:
+
+### 1. Product List Pages
+- **Purpose**: Capture selectors for lists of products
+- **Required Selectors**:
+  - Product Card Container (`.product-list-item`)
+  - Product Link (`a.product-link`)
+  - Product Thumbnail (`.product-thumb`)
+  - Product Title (`.product-title`)
+  - List Price (`.list-price`)
+  - Sale Price (`.sale-price`)
+
+### 2. Product Detail Pages
+- **Purpose**: Capture selectors for individual product details
+- **Required Selectors**:
+  - Product Title (`.product-name`)
+  - Main Price (`.main-price`)
+  - Product Description (`.description`)
+  - Product SKU (`.sku`)
+  - Image Gallery (`.gallery-container`)
+  - Variant Selectors (`.variant-options`)
+  - Add to Cart Button (`.add-to-cart`)
+  - Stock Status (`.stock-status`)
+
+### Selector Type Identification
+- Add a "Page Type" dropdown to specify whether the selectors are for:
+  - Product List Page
+  - Product Detail Page
+- Store this information in the database schema
+- Validate required selectors based on page type
+
+### Database Schema Update
+```sql
+CREATE TYPE page_type AS ENUM ('list', 'detail');
+
+ALTER TABLE selectors 
+ADD COLUMN page_type page_type NOT NULL DEFAULT 'detail',
+ADD COLUMN required_selectors_complete BOOLEAN DEFAULT false;
+```
+
 This is the primary feature of the application. It allows users to interactively discover CSS selectors from a live website.
 
 *   **Load a Webpage:** Users can enter a URL, which is then loaded into an `iframe` within the application. A server-side proxy is used to bypass browser security restrictions (CORS, X-Frame-Options).
