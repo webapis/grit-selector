@@ -33,8 +33,8 @@ export async function POST(request) {
 
     // Navigate to the URL
     await page.goto(url, {
-      waitUntil: 'networkidle0',
-      timeout: 30000
+      waitUntil: 'networkidle2', // Less strict than networkidle0
+      timeout: 60000 // Increased timeout to 60 seconds
     });
 
     // Instead of injecting function strings, we inject a bundled script.

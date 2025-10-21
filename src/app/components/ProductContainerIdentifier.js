@@ -24,18 +24,18 @@ export default function ProductContainerIdentifier() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to analyze page');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to analyze the page.');
       }
 
       const { results: analyzedResults, error: responseError } = await response.json();
-      
+
       if (responseError) {
         throw new Error(responseError);
       }
-
       setResults(analyzedResults);
     } catch (err) {
-      setError('Failed to analyze the page. Make sure the URL is accessible and allows iframe embedding.');
+      setError(err.message);
     } finally {
       setLoading(false);
     }
