@@ -57,3 +57,6 @@ This helper function creates a unique and concise CSS selector for a given eleme
 ## In Summary
 
 This script is a robust web scraping utility designed to intelligently locate and categorize product listings on a web page. It provides a structured, data-rich output that can be used for further automated processing, data extraction, or UI analysis.
+
+
+https://claude.ai/chat/1663c634-5475-4f50-b72f-d5be21f48d97
