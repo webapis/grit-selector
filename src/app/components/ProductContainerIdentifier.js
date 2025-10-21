@@ -5,6 +5,7 @@ import { useState } from 'react';
 export default function ProductContainerIdentifier() {
   const [url, setUrl] = useState('');
   const [results, setResults] = useState(null);
+  const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -86,31 +87,95 @@ export default function ProductContainerIdentifier() {
             <div>
               <h3 className="font-medium mb-2">Product Containers</h3>
               <div className="space-y-2">
-                {results.products.map((product, index) => (
-                  <div key={index} className="p-4 border rounded">
-                    <div className="flex justify-between">
-                      <code className="bg-gray-100 px-2 py-1 rounded">
-                        {product.selector}
-                      </code>
-                      <span className="text-sm text-gray-600">
-                        Confidence: {Math.round(product.confidence * 100)}%
-                      </span>
-                    </div>
-                    {Object.entries(product.characteristics).length > 0 && (
-                      <div className="mt-2 text-sm text-gray-600">
-                        <p>Detected features:</p>
-                        <ul className="list-disc list-inside">
-                          {Object.keys(product.characteristics).map((key) => (
-                            <li key={key}>{key.replace(/([A-Z])/g, ' $1').toLowerCase()}</li>
-                          ))}
-                        </ul>
+                    {results.products.map((product, index) => (
+                      <div
+                        key={index}
+                        className={`p-4 border rounded cursor-pointer ${selected === product.selector ? 'ring-2 ring-blue-300' : ''}`}
+                        onClick={() => {
+                          console.log('row clicked', product.selector);
+                          setSelected(product.selector);
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { console.log('row keydown', e.key, product.selector); setSelected(product.selector); } }}
+                      >
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <input
+                              id={`selector-${index}`}
+                              type="radio"
+                              name="selectedProduct"
+                              value={product.selector}
+                              checked={selected === product.selector}
+                              onChange={(e) => { console.log('radio changed', e.target.value); setSelected(product.selector); }}
+                              className="w-4 h-4"
+                              onClick={(e) => e.stopPropagation()} // prevent double handling
+                            />
+                            <label htmlFor={`selector-${index}`} className="select-none">
+                              <code className="bg-gray-100 px-2 py-1 rounded">
+                                {product.selector}
+                              </code>
+                            </label>
+                          </div>
+                          <span className="text-sm text-gray-600">
+                            Confidence: {Math.round(product.confidence * 100)}%
+                          </span>
+                        </div>
+                        {Object.entries(product.characteristics).length > 0 && (
+                          <div className="mt-2 text-sm text-gray-600">
+                            <p>Detected features:</p>
+                            <ul className="list-disc list-inside">
+                              {Object.keys(product.characteristics).map((key) => (
+                                <li key={key}>{key.replace(/([A-Z])/g, ' $1').toLowerCase()}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                ))}
+                    ))}
               </div>
             </div>
           )}
+
+              {/* Save selection area */}
+              <div className="mt-4">
+                <div className="mb-2 text-sm text-gray-700">Current selected: <span className="font-mono">{selected || 'none'}</span></div>
+                <button
+                  type="button"
+                  disabled={!selected}
+                  onClick={async () => {
+                    try {
+                      setLoading(true);
+                      setError(null);
+                      const resp = await fetch('/api/save-selection', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          url,
+                          selector: selected,
+                          results
+                        })
+                      });
+
+                      if (!resp.ok) {
+                        const err = await resp.json();
+                        throw new Error(err.error || 'Failed to save selection');
+                      }
+
+                      const body = await resp.json();
+                      // Optional: show a success message (simple alert for now)
+                      alert('Selection saved with id: ' + (body.id || 'unknown'));
+                    } catch (err) {
+                      setError(err.message);
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-green-300"
+                >
+                  Save selection
+                </button>
+              </div>
 
           {results.layoutPattern && (
             <div className="bg-gray-50 p-4 rounded">
