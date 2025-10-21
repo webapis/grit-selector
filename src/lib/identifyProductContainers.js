@@ -280,6 +280,171 @@ function identifyProductContainers(options = {}) {
     }
   });
 
+  // 4. Evaluate each candidate again to extract specific attribute selectors
+  //    This is done in a separate pass to ensure 'isContainer' is determined first.
+  const finalResults = [];
+  candidateElements.forEach(element => {
+    const confidence = calculateConfidence(element);
+
+    if (confidence.score >= config.minConfidence) {
+      const productAttributes = {};
+
+      // Only try to find attributes if it's likely an individual product, not a list container
+      // We use the previously calculated 'isProductListContainer' for this element
+      const isCurrentElementAContainer = isProductListContainer(element);
+
+      if (!isCurrentElementAContainer) {
+        // --- Extract Title Selector ---
+        const titleCandidates = element.querySelectorAll('h1, h2, h3, h4, [class*="title"], [class*="name"]');
+        let bestTitleElement = null;
+        let bestTitleScore = 0;
+        titleCandidates.forEach(el => {
+          const textContent = el.textContent.trim();
+          if (textContent.length > 5 && textContent.length < 150) { // Basic check for meaningful title length
+            let score = 0;
+            if (el.tagName.toLowerCase() === 'h1') score += 3;
+            else if (el.tagName.toLowerCase() === 'h2') score += 2;
+            else if (el.tagName.toLowerCase() === 'h3') score += 1;
+            if (el.className.includes('title') || el.className.includes('name')) score += 1;
+            if (score > bestTitleScore) {
+              bestTitleScore = score;
+              bestTitleElement = el;
+            }
+          }
+        });
+        if (bestTitleElement) {
+          productAttributes.titleSelector = generateSelector(bestTitleElement);
+        }
+
+        // --- Extract Price Selector ---
+        const priceCandidates = element.querySelectorAll('[class*="price"], [class*="cost"], span, div');
+        let bestPriceElement = null;
+        let bestPriceScore = 0;
+        const priceRegex = /\$\s*\d+(?:\.\d{2})?|\d+(?:\.\d{2})?\s*TL|\d+(?:\.\d{2})?\s*EUR|\d+(?:\.\d{2})?\s*USD|\d+(?:,\d{3})*(?:\.\d{2})?/;
+        priceCandidates.forEach(el => {
+          const textContent = el.textContent.trim();
+          if (priceRegex.test(textContent)) {
+            let score = 0;
+            if (el.className.includes('price') || el.className.includes('cost')) score += 2;
+            if (el.tagName.toLowerCase() === 'span' || el.tagName.toLowerCase() === 'div') score += 1; // Common price containers
+            if (score > bestPriceScore) {
+              bestPriceScore = score;
+              bestPriceElement = el;
+            }
+          }
+        });
+        if (bestPriceElement) {
+          productAttributes.priceSelector = generateSelector(bestPriceElement);
+        }
+
+        // --- Extract Image Selector ---
+        const imageCandidates = element.querySelectorAll('img');
+        // For images, we'll just take the first one that looks like a product image
+        const bestImageElement = Array.from(imageCandidates).find(img => {
+          const src = (img.src || '').toLowerCase();
+          return src && !src.includes('data:image') && !src.includes('spacer') && (src.includes('product') || src.includes('item') || img.alt);
+        });
+        if (bestImageElement) {
+          productAttributes.imageSelector = generateSelector(bestImageElement);
+        }
+      }
+
+      finalResults.push({
+        element,
+        confidence: confidence.score,
+        characteristics: confidence.characteristics,
+        position: getPositionInfo(element),
+        selector: generateSelector(element), // Selector for the product element itself
+        isContainer: isCurrentElementAContainer,
+        attributes: productAttributes // New: Specific attribute selectors
+      });
+    }
+  });
+
+  // 4. Sort by confidence (using finalResults)
+  finalResults.sort((a, b) => b.confidence - a.confidence);
+
+  // 5. Analyze layout patterns (using finalResults)
+  const productElementsForLayout = finalResults.filter(r => !r.isContainer).map(r => document.querySelector(r.selector)).filter(Boolean);
+  const layoutPattern = analyzeLayout(productElementsForLayout);
+
+  return {
+    products: finalResults.filter(r => !r.isContainer),
+    containers: finalResults.filter(r => r.isContainer),
+    layoutPattern,
+    summary: {
+      totalFound: finalResults.length,
+      highConfidence: finalResults.filter(r => r.confidence >= 0.8).length,
+      mediumConfidence: finalResults.filter(r => r.confidence >= 0.6 && r.confidence < 0.8).length
+    }
+  };
+}
+
+/**
+ * This is a modified version of identifyProductContainers for use inside Puppeteer.
+ * It removes the non-serializable `element` property from the results.
+ */
+function identifyProductContainersSerializable() {
+  const result = identifyProductContainers();
+  
+  // Remove non-serializable element property
+  result.products.forEach(p => {
+    delete p.element;
+    // No need to delete p.attributes as they contain only serializable strings (selectors)
+  });
+  result.containers.forEach(c => delete c.element);
+
+  return result;
+}
+
+/**
+ * Generate a unique CSS selector for an element
+ */
+function generateSelector(element) {
+  if (element.id) return `#${element.id}`;
+  
+  const path = [];
+  let current = element;
+  
+  while (current && current !== document.body) {
+    let selector = current.tagName.toLowerCase();
+    
+    if (current.className) {
+      const classes = current.className.trim().split(/\s+/).filter(Boolean).slice(0, 2); // Filter out empty strings
+      if (classes.length > 0) {
+        selector += '.' + classes.join('.');
+      }
+    }
+    
+    // Add nth-child if necessary for uniqueness, but only for direct children
+    if (current.parentElement && !current.id && !current.className) {
+      const siblings = Array.from(current.parentElement.children);
+      const sameTagSiblings = siblings.filter(s => s.tagName === current.tagName);
+      if (sameTagSiblings.length > 1) {
+        const index = siblings.indexOf(current) + 1;
+        selector += `:nth-child(${index})`;
+      }
+    }
+
+    path.unshift(selector);
+    current = current.parentElement;
+    
+    if (path.length >= 4) break; // Increased depth limit slightly for attribute selectors
+  }
+  
+  return path.join(' > ');
+}
+
+// export { identifyProductContainers, identifyProductContainersSerializable };
+        confidence: confidence.score,
+        characteristics: confidence.characteristics,
+        position: getPositionInfo(element),
+        selector: generateSelector(element),
+        isContainer: isProductListContainer(element)
+      });
+    }
+  });
+
   // 4. Sort by confidence
   results.sort((a, b) => b.confidence - a.confidence);
 
